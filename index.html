@@ -306,6 +306,13 @@ class AudioSystem{
     const f=sc[Math.min(n,sc.length-1)];this._bell(f,0.30,0.55);this._tone(f/2,0.5,0.09,'sine',0.01);}
   death(){this._tone(523.25,0.7,0.16,'sine',0.02,196);this._tone(392,0.8,0.13,'sine',0.02,147);this._tone(261.6,0.95,0.10,'sine',0.03,98);}
   boost(){this._tone(220,0.4,0.18,'sine',0.01,880);this._tone(330,0.34,0.10,'triangle',0.01,990);this._swoosh(0.38,0.16);}
+  fire(level){if(!this.ctx)return;const t=this.ctx.currentTime,sr=this.ctx.sampleRate,dur=0.3+level*0.05,len=(sr*dur)|0;
+    const buf=this.ctx.createBuffer(1,len,sr),d=buf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*(1-i/len);
+    const src=this.ctx.createBufferSource();src.buffer=buf;const f=this.ctx.createBiquadFilter();f.type='lowpass';f.Q.value=0.6;
+    f.frequency.setValueAtTime(700+level*200,t);f.frequency.exponentialRampToValueAtTime(280,t+dur);
+    const g=this.ctx.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.05+Math.min(level,4)*0.018,t+0.03);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    src.connect(f);f.connect(g);g.connect(this._g);src.start();}
   doubleStart(){const a=[523.25,659.25,783.99,1046.5];a.forEach((f,i)=>setTimeout(()=>this._bell(f,0.26,0.5),i*70));}
 }
 
@@ -329,6 +336,14 @@ class ParticleSystem{
     for(let i=0;i<6;i++){
       const c=isNeg?[rnd(180,255)|0,rnd(0,40)|0,rnd(0,60)|0]:(i%3===0?[255,rnd(180,255)|0,0]:i%3===1?[255,rnd(80,160)|0,0]:[255,255,rnd(0,80)|0]);
       this._add({x:x+xOff+rnd(-4,4),y:y+rnd(-10,10),vx:pvx+rnd(-30,30),vy:rnd(-70,70),life:1,ml:rnd(0.18,0.45),r:rnd(7,18),c,grav:60,sh:true});}}
+  fireFlames(x,y,level,vx,vy){
+    const n=level>=3?6:level>=2?4:2, wide=level>=2;
+    for(let i=0;i<n;i++){
+      const ang=Math.random()*6.2832, rad=wide?rnd(0,BALL_R*0.9):rnd(0,BALL_R*0.45);
+      const px=x+(wide?0:-BALL_R*0.5)+Math.cos(ang)*rad, py=y+Math.sin(ang)*rad*0.7;
+      const j=i%3, c=j===0?[255,rnd(210,255)|0,60]:j===1?[255,rnd(120,180)|0,20]:[255,70,15];
+      this._add({x:px,y:py,vx:-vx*0.04+rnd(-40,40),vy:-rnd(120,240)-Math.abs(vy)*0.04,
+        life:1,ml:rnd(0.18,0.42),r:rnd(5,11)+level*2,c,grav:-120,sh:true});}}
   death(x,y){const pal=[[255,80,0],[255,210,0],[220,220,255],[255,140,40]];
     for(let i=0;i<40;i++){const a=rnd(0,Math.PI*2),s=rnd(100,420);
       this._add({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-170,life:1,ml:rnd(0.6,1.4),r:rnd(5,14),c:pal[i%pal.length],grav:520,sh:true});}}
@@ -492,7 +507,7 @@ class Spawner{
 // ── BACKGROUND (extends to fill full screen) ──────────────────────────────────
 // ── SKY ZONES (canvas-drawn) — 30 designed scenes, a new one every 1000 pts ──
 const ZONES = [
-  {n:"Daybreak",      a:"#ffe1b0", b:"#7bb6e8", sun:[0.28,0.60,28,"#ffe6b0","rgba(255,210,140,0.50)"], clouds:[0.5,"#fff4e2"], hills:["#5aa657",30]},
+  {n:"Daybreak",      a:"#cfe9ff", b:"#7bb6e8", sun:[0.28,0.30,30,"#fff0c0","rgba(255,225,150,0.50)"], clouds:[1.0,"#ffffff"]},
   {n:"Clear Skies",   a:"#bfe8ff", b:"#4a9fe6", sun:[0.74,0.18,30,"#fff3b0","rgba(255,240,150,0.50)"], clouds:[0.85,"#ffffff"], hills:["#4f9e4a",26]},
   {n:"Green Meadows", a:"#d8f4c8", b:"#62b8e2", clouds:[0.7,"#ffffff"], hills:["#46a046",40], trees:["bush","#3c8a3a"]},
   {n:"Rolling Hills", a:"#cfeebf", b:"#54acd8", clouds:[0.6,"#ffffff"], hills:["#4f9c5a",46], trees:["bush","#3f8a48"]},
@@ -601,11 +616,11 @@ function _hills(ctx,vw,vh,camX,horizon,col,amp,par,a){
 function _puff(ctx,x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,6.2832);ctx.arc(x+r*0.85,y+r*0.12,r*0.66,0,6.2832);ctx.arc(x-r*0.8,y+r*0.16,r*0.6,0,6.2832);ctx.arc(x+r*0.28,y-r*0.32,r*0.62,0,6.2832);ctx.fill();}
 function _clouds(ctx,vw,vh,camX,a,col,dens,T){
   if(a<=0||dens<=0)return;ctx.save();ctx.globalAlpha=a*0.95;ctx.fillStyle=col;
-  const n=(dens*6+2)|0, W=vw+360;
+  const n=(dens*10+2)|0, W=vw+360;
   for(let i=0;i<n;i++){
     const seed=dh(i,7,2);
     let x=(seed*W-camX*0.12-T*(6+seed*10))%W; x=((x%W)+W)%W-180;
-    const y=20+dh(i,8,3)*vh*0.38, r=34+seed*46;
+    const y=10+dh(i,8,3)*vh*0.58, r=34+seed*46;
     _puff(ctx,x,y,r);
   }
   ctx.restore();
@@ -811,7 +826,7 @@ class Game{
     const tap=(e)=>{e.preventDefault();this._audio.resume();
       if(this._state===S.RESETTING)return;
       if(this._state===S.WAITING){this._ball.vx=BALL_VX;this._ball.flap();this._audio.flap();this._state=S.PLAYING;}
-      else if(this._state===S.PLAYING){this._ball.flap();this._audio.flap();this._pts.trail(this._ball.x,this._ball.y,this._ball.vx,this._ball.vy);}
+      else if(this._state===S.PLAYING){this._ball.flap();this._audio.flap();if(this._streak<1)this._pts.trail(this._ball.x,this._ball.y,this._ball.vx,this._ball.vy);}
       else if(this._state===S.PAUSED){this._state=S.PLAYING;}
       else if(this._state===S.DEAD&&this._deathT>0.08){this._initRound();}};
     this._cv.addEventListener('mousedown',tap);
@@ -872,6 +887,7 @@ class Game{
     this._score=Math.max(0,this._score+delta);
     document.getElementById('scoreVal').textContent=this._score;
     if(this._score>this._best){this._best=this._score;document.getElementById('bestVal').textContent=this._best;localStorage.setItem('hd_best',this._best);}
+    if(this._score>_wr){_wr=this._score;document.getElementById('wrVal').textContent=_wr;localStorage.setItem('hd_wr',_wr);}
     // Respawn at a safe position ahead of camera
     const safeX=this._camera.x+CW*0.28;
     const safeY=this._camera.y+CH*0.44;
@@ -925,7 +941,9 @@ class Game{
       this._score+=pts;
       document.getElementById('scoreVal').textContent=this._score;
       if(this._score>this._best){this._best=this._score;document.getElementById('bestVal').textContent=this._best;localStorage.setItem('hd_best',this._best);}
+      if(this._score>_wr){_wr=this._score;document.getElementById('wrVal').textContent=_wr;localStorage.setItem('hd_wr',_wr);}
       this._audio.score(this._streak);
+      if(clean&&this._streak>=1)this._audio.fire(this._streak);
       this._pts.scoreBurst(h.x,h.y,pts);this._ui.bumpScore(pts);
       const basePts=dbl?pts/2:pts;
       const popTxt=clean
@@ -939,6 +957,8 @@ class Game{
         if(!h.scored&&h.passedAbove&&this._ball.x>h.x+margin){
           h.scored=true;this._penalize('miss');break;}}}
     for(const h of this._spawner.hoops)h.update(eff);
+    // Combo fire — flames trail the ball while a clean streak is alive
+    if(this._streak>=1&&!this._boosting)this._pts.fireFlames(this._ball.x,this._ball.y,this._streak,this._ball.vx,this._ball.vy);
     this._pts.update(eff);this._popups.update(eff);this._rimF.update(dt);this._penF.update(dt);
     this._camera.setTarget(this._ball.x,this._ball.y,this._ball.vy);
     this._camera.update(eff,this._ball.vy);
@@ -965,6 +985,24 @@ class Game{
       if(!h.scored&&h.tryScore(b.x,b.y,px,py))this._pendingScores.push(h);}
     b.vx+=(BALL_VX-b.vx)*clamp(dt*5,0,1);}
 
+  // Flame tongues licking over the ball — grows with the streak (1=some, 2=engulfed, 3+=intense)
+  _drawBallFire(ctx,camX,camY){
+    const lvl=this._streak;
+    if(lvl<1||this._state!==S.PLAYING||this._boosting)return;
+    const bx=this._ball.x-camX,by=this._ball.y-camY,T=performance.now()/1000;
+    const tongues=lvl>=3?9:lvl>=2?6:4, reach=BALL_R*(lvl>=3?1.95:lvl>=2?1.45:1.0);
+    ctx.save();ctx.globalCompositeOperation='lighter';
+    for(let i=0;i<tongues;i++){
+      const a=(i/tongues)*6.2832, fl=0.55+0.45*Math.sin(T*9+i*1.7);
+      const cx=bx+Math.cos(a)*BALL_R*0.55+Math.sin(T*6+i)*3;
+      const cy=(by+Math.sin(a)*BALL_R*0.4)-reach*fl*0.6;
+      const r=(BALL_R*0.5+lvl*2)*fl;
+      ctx.fillStyle='rgba(255,'+((90+50*fl)|0)+',10,0.45)';
+      ctx.beginPath();ctx.arc(cx,cy,r,0,6.2832);ctx.fill();
+      ctx.fillStyle='rgba(255,'+((200+45*fl)|0)+',70,0.5)';
+      ctx.beginPath();ctx.arc(cx,cy,r*0.55,0,6.2832);ctx.fill();}
+    ctx.restore();}
+
   _draw(){
     const ctx=this._cx,vw=this._cv.width,vh=this._cv.height;
     const camX=this._camera.ox,camY=this._camera.oy;
@@ -976,8 +1014,19 @@ class Game{
     ctx.translate(this._ox,this._oy);ctx.scale(this._scale,this._scale);
     // Back arcs drawn first (behind ball)
     for(const h of this._spawner.hoops)h.drawBack(ctx,camX,camY);
+    // Combo fire glow behind the ball (hot streaks)
+    if(this._streak>=2&&this._state===S.PLAYING&&!this._boosting){
+      const bx=this._ball.x-camX,by=this._ball.y-camY,T=performance.now()/1000;
+      const R=BALL_R*(this._streak>=3?2.7:2.1),fl=0.7+0.3*Math.sin(T*9);
+      const gg=ctx.createRadialGradient(bx,by,BALL_R*0.3,bx,by,R);
+      gg.addColorStop(0,'rgba(255,180,40,'+(0.5*fl).toFixed(2)+')');
+      gg.addColorStop(0.5,'rgba(255,90,10,'+(0.28*fl).toFixed(2)+')');
+      gg.addColorStop(1,'rgba(255,40,0,0)');
+      ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle=gg;
+      ctx.beginPath();ctx.arc(bx,by,R,0,6.2832);ctx.fill();ctx.restore();}
     // Ball (with trail) drawn next
     this._pts.draw(ctx,camX,camY);this._ball.draw(ctx,camX,camY);
+    this._drawBallFire(ctx,camX,camY);
     // Front arcs drawn last – overlap the ball → 3D pass-through illusion
     for(const h of this._spawner.hoops)h.drawFront(ctx,camX,camY);
     this._popups.draw(ctx,camX,camY);
