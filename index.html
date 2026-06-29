@@ -505,38 +505,40 @@ class Spawner{
     this.hoops=this.hoops.filter(h=>h.baseX>camX-160);}}
 
 // ── BACKGROUND (extends to fill full screen) ──────────────────────────────────
-// ── SKY ZONES (canvas-drawn) — 30 designed scenes, a new one every 1000 pts ──
+// ── SKY ZONES (canvas-drawn, full-screen atmospheric) — 30 scenes, new every 1000 pts ──
+// Each scene fills the WHOLE screen: a radial depth gradient + layered atmosphere
+// (fog, god-rays, cloud banks, aurora, nebula, corner foliage) + full-screen weather.
 const ZONES = [
-  {n:"Daybreak",      a:"#cfe9ff", b:"#7bb6e8", sun:[0.28,0.30,30,"#fff0c0","rgba(255,225,150,0.50)"], clouds:[1.0,"#ffffff"]},
-  {n:"Clear Skies",   a:"#bfe8ff", b:"#4a9fe6", sun:[0.74,0.18,30,"#fff3b0","rgba(255,240,150,0.50)"], clouds:[0.85,"#ffffff"], hills:["#4f9e4a",26]},
-  {n:"Green Meadows", a:"#d8f4c8", b:"#62b8e2", clouds:[0.7,"#ffffff"], hills:["#46a046",40], trees:["bush","#3c8a3a"]},
-  {n:"Rolling Hills", a:"#cfeebf", b:"#54acd8", clouds:[0.6,"#ffffff"], hills:["#4f9c5a",46], trees:["bush","#3f8a48"]},
-  {n:"Golden Hour",   a:"#ffd79a", b:"#ff9e6b", sun:[0.5,0.5,40,"#fff0c0","rgba(255,200,120,0.60)"], clouds:[0.5,"#ffd9b0"], hills:["#3c6b4a",30]},
-  {n:"Sunset Bay",    a:"#ff9e7a", b:"#6a4e9c", sun:[0.5,0.62,44,"#ffd9a0","rgba(255,150,90,0.60)"], water:["#7a5ba6"], clouds:[0.4,"#ffb98f"]},
-  {n:"Dusk",          a:"#7c5e9c", b:"#2e2a5c", stars:0.25, hills:["#241f44",30]},
-  {n:"Twilight",      a:"#4a3a7c", b:"#1c1840", stars:0.45, moon:[0.7,0.24,24,"#e8ecff"], mtn:["#1a1638",false,0.2]},
-  {n:"Starry Night",  a:"#243a6c", b:"#0a1230", stars:0.8, moon:[0.72,0.2,26,"#f0f3ff"], mtn:["#10183a",true,0.2]},
-  {n:"Moonlit Peaks", a:"#1e2e58", b:"#070d24", stars:0.9, moon:[0.3,0.26,30,"#f4f6ff"], mtn2:["#141d40",true,0.12], mtn:["#0c1430",true,0.22]},
-  {n:"Rainy Day",     a:"#9fb0be", b:"#5b6b78", clouds:[1.0,"#c2ccd4"], hills:["#4a5a4e",28], precip:"rain"},
-  {n:"Thunderstorm",  a:"#3a4250", b:"#161c26", clouds:[1.0,"#2b3340"], hills:["#1a2028",30], precip:"rain", lightning:true},
-  {n:"Misty Forest",  a:"#a9c2b0", b:"#5e7a6a", clouds:[0.6,"#cdd9ce"], trees:["pine","#2e5440"], mtn:["#3a5a48",false,0.18]},
-  {n:"Jungle Canopy", a:"#1f5a30", b:"#bfe85a", trees:["bush","#10532a"], hills:["#0e4524",40], precip:"leaf"},
-  {n:"Tropical Beach",a:"#ffe7b0", b:"#46c2e6", sun:[0.76,0.2,30,"#fff3c0","rgba(255,240,160,0.50)"], water:["#2bb6d6"], trees:["palm","#2e6b3a"]},
-  {n:"Ocean Surface", a:"#7fd2ec", b:"#3a86c8", sun:[0.7,0.22,28,"#fff3c0","rgba(255,240,160,0.45)"], water:["#2f7fc0"], clouds:[0.5,"#ffffff"]},
-  {n:"Coral Reef",    a:"#1f7a9c", b:"#0c3a5c", water:["#0c3a5c"], bubbles:true, godray:true},
-  {n:"Deep Ocean",    a:"#072c46", b:"#02101f", bubbles:true, godray:true, stars:0.15},
-  {n:"Desert Dunes",  a:"#f4d79a", b:"#e89a5c", sun:[0.5,0.3,40,"#fff0c0","rgba(255,210,130,0.55)"], hills:["#d98f54",36]},
-  {n:"Red Canyon",    a:"#e88f5c", b:"#7c3a2c", sun:[0.6,0.28,34,"#ffd9a0","rgba(255,170,100,0.50)"], mtn:["#7a3326",false,0.2], hills:["#5c2a20",26]},
-  {n:"Snowy Tundra",  a:"#dce9f4", b:"#9cc0e0", clouds:[0.6,"#ffffff"], hills:["#cfe0ee",24], mtn:["#b8d0e6",true,0.18], precip:"snow"},
-  {n:"Frozen Peaks",  a:"#bcd8ee", b:"#7aa8d0", mtn2:["#a9c8e4",true,0.12], mtn:["#86abce",true,0.22], precip:"snow"},
-  {n:"Aurora Veil",   a:"#16324a", b:"#04101c", stars:0.8, aurora:[1,["#56f0b0","#7ab0ff","#c08aff"]], mtn:["#0a1a2a",true,0.2]},
-  {n:"Cherry Blossom",a:"#ffd6e6", b:"#9bd0e8", clouds:[0.4,"#ffffff"], hills:["#6aa85a",30], trees:["bush","#e88ab0"], precip:"petal"},
-  {n:"Autumn Woods",  a:"#f4c98f", b:"#d98f5c", hills:["#a85a2c",32], trees:["pine","#8a4a26"], precip:"leaf"},
-  {n:"Volcanic",      a:"#5c1f1a", b:"#160808", nebula:[0.7,["rgba(255,90,30,0.50)","rgba(255,150,40,0.40)"]], mtn:["#1c0e0a",false,0.2], precip:"ember"},
-  {n:"Starfield",     a:"#0a1230", b:"#03060f", stars:1.0, nebula:[0.3,["rgba(90,120,255,0.40)"]], comet:true},
-  {n:"Nebula Cloud",  a:"#2a0e44", b:"#0c0422", stars:1.0, nebula:[1,["rgba(200,80,255,0.50)","rgba(80,160,255,0.45)","rgba(255,90,180,0.40)"]]},
-  {n:"Galaxy Band",   a:"#0c1733", b:"#03060f", stars:1.0, nebula:[0.4,["rgba(120,90,255,0.40)"]], planet:[0.72,0.26,40,"#c9a9f0","rgba(220,200,255,0.70)"]},
-  {n:"The Apex",      a:"#1a0626", b:"#050108", stars:1.0, rainbow:true, planet:[0.3,0.24,46,"#ffd9a0","rgba(255,220,170,0.80)"], nebula:[0.5,["rgba(255,120,220,0.40)","rgba(120,200,255,0.40)"]]},
+  {n:"Daybreak",       c1:"#ffdcb0", c2:"#6fa8e0", glow:[0.30,0.32,0.55,"rgba(255,228,150,0.50)"], clouds:[0.7,"#ffffff"]},
+  {n:"Clear Skies",    c1:"#bfe8ff", c2:"#3f8fd8", glow:[0.74,0.20,0.45,"rgba(255,245,180,0.45)"], clouds:[1.0,"#ffffff"]},
+  {n:"Sunbeam Meadow", c1:"#eaf6b0", c2:"#3f8a48", shafts:[0.5,"rgba(255,250,180,0.5)"], precip:"pollen", clouds:[0.4,"#ffffff"]},
+  {n:"Windy Plains",   c1:"#cfeede", c2:"#3f86b0", wind:0.7, clouds:[0.6,"#ffffff"]},
+  {n:"Golden Hour",    c1:"#ffe6a0", c2:"#d8632c", glow:[0.5,0.42,0.62,"rgba(255,200,110,0.60)"], fog:[0.3,"rgba(255,180,120,0.30)"]},
+  {n:"Sunset Blaze",   c1:"#ff9e5c", c2:"#4c2868", glow:[0.5,0.55,0.55,"rgba(255,120,60,0.60)"], precip:"ember", pN:0.3},
+  {n:"Dusk",           c1:"#6c5a9c", c2:"#161232", stars:0.3, glow:[0.72,0.7,0.4,"rgba(255,160,120,0.35)"]},
+  {n:"Twilight",       c1:"#3a3270", c2:"#0c0a24", stars:0.5, glow:[0.72,0.24,0.34,"rgba(220,230,255,0.55)"]},
+  {n:"Starry Night",   c1:"#1c2c5c", c2:"#05081a", stars:0.85, glow:[0.3,0.24,0.30,"rgba(230,238,255,0.55)"]},
+  {n:"Moonlit Mist",   c1:"#24345c", c2:"#070b1e", stars:0.5, glow:[0.5,0.3,0.42,"rgba(220,230,255,0.5)"], fog:[0.55,"rgba(180,200,230,0.26)"]},
+  {n:"Rainy Day",      c1:"#8a9aa8", c2:"#3e4853", precip:"rain", pN:0.8, fog:[0.4,"rgba(200,210,220,0.22)"]},
+  {n:"Stormfront",     c1:"#3a4250", c2:"#0a0e16", bank:[0.95,"rgba(18,24,34,0.92)"], precip:"rain", pN:0.95, lightning:true},
+  {n:"Misty Forest",   c1:"#7a9a82", c2:"#1e3226", fog:[0.7,"rgba(205,222,205,0.26)"], precip:"leaf", pN:0.4, shafts:[0.3,"rgba(220,255,200,0.30)"]},
+  {n:"Jungle Canopy",  c1:"#4a9a4a", c2:"#072410", leaves:"#0c3a18", shafts:[0.45,"rgba(232,255,150,0.40)"], precip:"firefly", pN:0.5},
+  {n:"Tropical Lagoon",c1:"#9af0ea", c2:"#1f8ab0", glow:[0.7,0.22,0.42,"rgba(255,250,180,0.45)"], precip:"bubble", pN:0.3, shimmer:0.25},
+  {n:"Ocean Surface",  c1:"#6fd0ec", c2:"#1f5c9c", shafts:[0.5,"rgba(200,245,255,0.40)"], precip:"bubble", pN:0.4},
+  {n:"Coral Reef",     c1:"#2aa0c0", c2:"#093652", shafts:[0.5,"rgba(190,240,255,0.40)"], precip:"bubble", pN:0.7},
+  {n:"Deep Abyss",     c1:"#0c3a52", c2:"#020e1a", precip:"sparkle", pN:0.4, vig:0.5},
+  {n:"Desert Mirage",  c1:"#ffe6a0", c2:"#c07a44", glow:[0.5,0.30,0.6,"rgba(255,225,150,0.50)"], shimmer:0.4, precip:"dust", pN:0.4},
+  {n:"Crimson Canyon", c1:"#e8744c", c2:"#421a16", glow:[0.6,0.3,0.46,"rgba(255,170,100,0.40)"], fog:[0.4,"rgba(220,120,80,0.30)"], precip:"dust", pN:0.4},
+  {n:"Snowfall",       c1:"#dceaf4", c2:"#88a6c6", precip:"snow", pN:0.9, fog:[0.4,"rgba(255,255,255,0.26)"]},
+  {n:"Frozen Aurora",  c1:"#bcd8ee", c2:"#46688c", aurora:[0.7,["#7af0c0","#9ac0ff"]], precip:"snow", pN:0.55},
+  {n:"Aurora Borealis",c1:"#163048", c2:"#04101c", stars:0.7, aurora:[1,["#56f0b0","#7ab0ff","#c08aff"]], precip:"sparkle", pN:0.3},
+  {n:"Cherry Blossom", c1:"#ffe0ec", c2:"#d87aa0", glow:[0.5,0.3,0.5,"rgba(255,232,240,0.40)"], precip:"petal", pN:0.8},
+  {n:"Autumn Drift",   c1:"#ffc97a", c2:"#a8502a", fog:[0.3,"rgba(255,190,120,0.26)"], precip:"leaf", pN:0.85},
+  {n:"Volcanic",       c1:"#7c2a1a", c2:"#0e0606", nebula:[0.6,["rgba(255,90,20,0.50)","rgba(255,150,40,0.35)"]], glow:[0.5,0.88,0.55,"rgba(255,90,20,0.50)"], precip:"ember", pN:0.85, vig:0.45},
+  {n:"Starfield",      c1:"#0c1430", c2:"#03060f", stars:1.0, nebula:[0.3,["rgba(90,120,255,0.40)"]], comet:true},
+  {n:"Nebula Cloud",   c1:"#2a0e44", c2:"#090420", stars:1.0, nebula:[1,["rgba(200,80,255,0.50)","rgba(80,160,255,0.45)","rgba(255,90,180,0.40)"]]},
+  {n:"Galaxy Core",    c1:"#1a2a5c", c2:"#03060f", stars:1.0, nebula:[0.5,["rgba(255,220,160,0.40)","rgba(120,90,255,0.40)"]], planet:[0.74,0.24,42,"#c9a9f0","rgba(220,200,255,0.70)"]},
+  {n:"Cosmic Apex",    c1:"#2a0e44", c2:"#050108", stars:1.0, aurora:[0.7,["#ff7ad0","#7ab0ff","#7af0c0"]], nebula:[0.5,["rgba(255,120,220,0.40)","rgba(120,200,255,0.40)"]], rainbow:true, comet:true},
 ];
 let _skyScore = 0, _lastZoneIdx = -1, _zoneBannerTimer = null;
 function showZoneBanner(name){
@@ -557,176 +559,107 @@ function updateSky(target){
 function _hx(h){const n=parseInt(h.slice(1),16);return [(n>>16)&255,(n>>8)&255,n&255];}
 function _lerpC(a,b,t){const A=_hx(a),B=_hx(b);return "rgb("+(A[0]+(B[0]-A[0])*t|0)+","+(A[1]+(B[1]-A[1])*t|0)+","+(A[2]+(B[2]-A[2])*t|0)+")";}
 
+function _glow(ctx,x,y,R,col,a){ctx.save();ctx.globalAlpha=a;const g=ctx.createRadialGradient(x,y,0,x,y,R);g.addColorStop(0,col);g.addColorStop(1,"rgba(255,255,255,0)");ctx.fillStyle=g;ctx.fillRect(x-R,y-R,R*2,R*2);ctx.restore();}
 function _stars(ctx,vw,vh,camX,camY,a,dens,T){
-  if(a<=0||dens<=0)return; const n=(dens*150)|0, ox=-camX*0.06, oy=-camY*0.03;
-  ctx.save();ctx.fillStyle="#fff";
-  for(let i=0;i<n;i++){
-    let x=(dh(i,1,3)*vw+ox)%vw; if(x<0)x+=vw;
-    let y=dh(i,2,5)*vh*0.85+oy; y=((y%vh)+vh)%vh;
-    const tw=0.45+0.55*Math.sin(T*1.8+i*1.7);
-    ctx.globalAlpha=a*tw*(0.5+dh(i,3,2)*0.5);
-    const r=dh(i,4,1)*1.6+0.5; ctx.fillRect(x,y,r,r);
-  }
-  ctx.restore();
-}
-function _sun(ctx,x,y,R,col,glow,a){
-  ctx.save();
-  const g=ctx.createRadialGradient(x,y,R*0.3,x,y,R*5);
-  g.addColorStop(0,glow);g.addColorStop(1,"rgba(255,255,255,0)");
-  ctx.globalAlpha=a;ctx.fillStyle=g;ctx.fillRect(x-R*5,y-R*5,R*10,R*10);
-  ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,R,0,6.2832);ctx.fill();
-  ctx.restore();
-}
-function _moon(ctx,x,y,R,col,a){
-  ctx.save();
-  const g=ctx.createRadialGradient(x,y,R*0.3,x,y,R*4);
-  g.addColorStop(0,"rgba(220,230,255,0.40)");g.addColorStop(1,"rgba(255,255,255,0)");
-  ctx.globalAlpha=a;ctx.fillStyle=g;ctx.fillRect(x-R*4,y-R*4,R*8,R*8);
-  ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,R,0,6.2832);ctx.fill();
-  ctx.fillStyle="rgba(0,0,0,0.10)";
-  ctx.beginPath();ctx.arc(x-R*0.3,y-R*0.2,R*0.22,0,6.2832);ctx.arc(x+R*0.35,y+R*0.25,R*0.16,0,6.2832);ctx.arc(x+R*0.1,y-R*0.4,R*0.12,0,6.2832);ctx.fill();
-  ctx.restore();
-}
-function _mountains(ctx,vw,vh,camX,horizon,col,snow,par,seed,a){
-  ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;
-  const span=vw/4, off=(-camX*par)%span;
-  ctx.beginPath();ctx.moveTo(-span,horizon);
-  for(let k=-1;k<=5;k++){
-    const px=k*span+off, h=(0.16+dh(k,seed,1)*0.18)*vh;
-    ctx.lineTo(px,horizon-h);
-    ctx.lineTo(px+span/2,horizon-(0.05+dh(k,seed,4)*0.05)*vh);
-  }
-  ctx.lineTo(vw+span,horizon);ctx.closePath();ctx.fill();
-  if(snow){
-    ctx.fillStyle="rgba(255,255,255,0.85)";
-    for(let k=-1;k<=5;k++){
-      const px=k*span+off, h=(0.16+dh(k,seed,1)*0.18)*vh, pY=horizon-h;
-      ctx.beginPath();ctx.moveTo(px,pY);ctx.lineTo(px-span*0.12,pY+h*0.22);ctx.lineTo(px,pY+h*0.15);ctx.lineTo(px+span*0.12,pY+h*0.22);ctx.closePath();ctx.fill();
-    }
-  }
-  ctx.restore();
-}
-function _hills(ctx,vw,vh,camX,horizon,col,amp,par,a){
-  ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;
-  const off=-camX*par;
-  ctx.beginPath();ctx.moveTo(0,vh);
-  for(let x=0;x<=vw;x+=14){const y=horizon-amp*0.5+Math.sin((x-off)/vw*9)*amp*0.5;ctx.lineTo(x,y);}
-  ctx.lineTo(vw,vh);ctx.closePath();ctx.fill();ctx.restore();
-}
+  if(a<=0||dens<=0)return;const n=(dens*160)|0,ox=-camX*0.05,oy=-camY*0.03;ctx.save();ctx.fillStyle="#fff";
+  for(let i=0;i<n;i++){let x=(dh(i,1,3)*vw+ox)%vw;if(x<0)x+=vw;let y=(dh(i,2,5)*vh+oy);y=((y%vh)+vh)%vh;
+    const tw=0.45+0.55*Math.sin(T*1.8+i*1.7);ctx.globalAlpha=a*tw*(0.5+dh(i,3,2)*0.5);const r=dh(i,4,1)*1.7+0.5;ctx.fillRect(x,y,r,r);}
+  ctx.restore();}
+function _aurora(ctx,vw,vh,T,a,cols){if(a<=0)return;ctx.save();ctx.globalAlpha=a*0.5;ctx.globalCompositeOperation="lighter";
+  for(let b=0;b<cols.length;b++){ctx.fillStyle=cols[b];ctx.beginPath();ctx.moveTo(0,vh*0.08);
+    for(let x=0;x<=vw;x+=20)ctx.lineTo(x,vh*(0.08+0.12*b)+Math.sin(x/vw*6+T*0.5+b)*36);
+    for(let x=vw;x>=0;x-=20)ctx.lineTo(x,vh*(0.34+0.12*b)+Math.sin(x/vw*6+T*0.5+b)*36);
+    ctx.closePath();ctx.fill();}ctx.restore();}
+function _nebula(ctx,vw,vh,a,cols){if(a<=0)return;ctx.save();ctx.globalAlpha=a*0.6;ctx.globalCompositeOperation="lighter";
+  for(let i=0;i<cols.length;i++){const x=vw*(0.16+0.66*dh(i,9,1)),y=vh*(0.14+0.6*dh(i,9,2)),r=vw*(0.3+dh(i,9,3)*0.22);
+    const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,cols[i]);g.addColorStop(1,"rgba(0,0,0,0)");ctx.fillStyle=g;ctx.fillRect(0,0,vw,vh);}ctx.restore();}
+function _shafts(ctx,vw,vh,T,a,col){if(a<=0)return;ctx.save();ctx.globalAlpha=a*0.5;ctx.globalCompositeOperation="lighter";ctx.fillStyle=col;
+  const n=7;for(let i=0;i<n;i++){const x=vw*(i/n)+Math.sin(T*0.3+i)*30,w=vw*0.05,sk=vw*0.2;
+    ctx.beginPath();ctx.moveTo(x,-20);ctx.lineTo(x+w,-20);ctx.lineTo(x+w+sk,vh+20);ctx.lineTo(x+sk,vh+20);ctx.closePath();ctx.fill();}ctx.restore();}
+function _fog(ctx,vw,vh,T,a,col){if(a<=0)return;ctx.save();ctx.globalAlpha=a;
+  for(let i=0;i<5;i++){const y=vh*(0.12+i*0.2);const off=((T*(8+i*5)+i*300)%(vw+500))-250;
+    const g=ctx.createRadialGradient(off,y,0,off,y,vw*0.55);g.addColorStop(0,col);g.addColorStop(1,"rgba(0,0,0,0)");ctx.fillStyle=g;ctx.fillRect(0,y-vh*0.2,vw,vh*0.4);}
+  ctx.restore();}
+function _cloudBank(ctx,vw,vh,camX,T,a,col){if(a<=0)return;ctx.save();ctx.globalAlpha=a;
+  const off=((-camX*0.05-T*6)%(vw*0.5));
+  for(let row=0;row<2;row++){const yy=vh*(0.16+row*0.24);
+    for(let i=-1;i<5;i++){const x=i*vw*0.5+off+(row?vw*0.22:0),y=yy+Math.sin(i*1.7+row)*vh*0.05,R=vw*0.42;
+      const g=ctx.createRadialGradient(x,y,R*0.2,x,y,R);g.addColorStop(0,col);g.addColorStop(1,"rgba(0,0,0,0)");ctx.fillStyle=g;ctx.fillRect(x-R,y-R,R*2,R*2);}}
+  ctx.restore();}
 function _puff(ctx,x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,6.2832);ctx.arc(x+r*0.85,y+r*0.12,r*0.66,0,6.2832);ctx.arc(x-r*0.8,y+r*0.16,r*0.6,0,6.2832);ctx.arc(x+r*0.28,y-r*0.32,r*0.62,0,6.2832);ctx.fill();}
-function _clouds(ctx,vw,vh,camX,a,col,dens,T){
-  if(a<=0||dens<=0)return;ctx.save();ctx.globalAlpha=a*0.95;ctx.fillStyle=col;
-  const n=(dens*10+2)|0, W=vw+360;
+function _clouds(ctx,vw,vh,camX,a,col,dens,T){if(a<=0||dens<=0)return;ctx.save();ctx.globalAlpha=a*0.95;ctx.fillStyle=col;
+  const n=(dens*10+2)|0,W=vw+360;
+  for(let i=0;i<n;i++){const seed=dh(i,7,2);let x=(seed*W-camX*0.12-T*(6+seed*10))%W;x=((x%W)+W)%W-180;const y=10+dh(i,8,3)*vh*0.6,r=34+seed*48;_puff(ctx,x,y,r);}
+  ctx.restore();}
+function _blade(ctx,x,y,ang,len,wid,col){ctx.save();ctx.translate(x,y);ctx.rotate(ang);ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(0,0);ctx.quadraticCurveTo(len*0.5,-wid,len,0);ctx.quadraticCurveTo(len*0.5,wid,0,0);ctx.fill();ctx.restore();}
+function _leaves(ctx,vw,vh,T,col,a){ctx.save();ctx.globalAlpha=a;const sw=Math.sin(T*0.9)*0.05,L=Math.max(vw,vh)*0.42,W=L*0.16;
+  for(let k=0;k<4;k++)_blade(ctx,-30,-30,0.32+k*0.34+sw,L,W,col);
+  for(let k=0;k<4;k++)_blade(ctx,vw+30,-30,Math.PI-0.32-k*0.34-sw,L,W,col);
+  for(let k=0;k<3;k++)_blade(ctx,-30,vh+30,-0.32-k*0.34+sw,L*0.8,W,col);
+  for(let k=0;k<3;k++)_blade(ctx,vw+30,vh+30,Math.PI+0.32+k*0.34-sw,L*0.8,W,col);
+  ctx.restore();}
+function _wind(ctx,vw,vh,T,a){if(a<=0)return;ctx.save();ctx.globalAlpha=a*0.5;ctx.strokeStyle="rgba(255,255,255,0.5)";ctx.lineWidth=2;
+  for(let i=0;i<16;i++){let x=(dh(i,3,1)*vw-T*((4+dh(i,4,2))*130))%(vw+220);x=((x%(vw+220))+(vw+220))%(vw+220)-110;const y=dh(i,5,3)*vh;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+36,y+11);ctx.stroke();}ctx.restore();}
+function _weather(ctx,vw,vh,type,T,a){if(!type||a<=0)return;const n=(a*150)|0;ctx.save();
   for(let i=0;i<n;i++){
-    const seed=dh(i,7,2);
-    let x=(seed*W-camX*0.12-T*(6+seed*10))%W; x=((x%W)+W)%W-180;
-    const y=10+dh(i,8,3)*vh*0.58, r=34+seed*46;
-    _puff(ctx,x,y,r);
+    if(type==="rain"){let y=(dh(i,4,2)*vh+T*820)%vh,x=(dh(i,3,1)*vw+44)%vw;x=((x%vw)+vw)%vw;ctx.strokeStyle="rgba(190,214,255,0.5)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-6,y+18);ctx.stroke();}
+    else if(type==="snow"){let y=(dh(i,4,2)*vh+T*70)%vh,x=(dh(i,3,1)*vw+Math.sin(T*0.7+i)*30)%vw;x=((x%vw)+vw)%vw;ctx.fillStyle="rgba(255,255,255,0.92)";ctx.beginPath();ctx.arc(x,y,dh(i,5,3)*2.5+1,0,6.2832);ctx.fill();}
+    else if(type==="petal"){let y=(dh(i,4,2)*vh+T*90)%vh,x=(dh(i,3,1)*vw+Math.sin(T*0.8+i)*44)%vw;x=((x%vw)+vw)%vw;ctx.save();ctx.translate(x,y);ctx.rotate(T*1.4+i);ctx.fillStyle="rgba(255,184,212,0.9)";ctx.beginPath();ctx.ellipse(0,0,5,3,0,0,6.2832);ctx.fill();ctx.restore();}
+    else if(type==="leaf"){let y=(dh(i,4,2)*vh+T*80)%vh,x=(dh(i,3,1)*vw+Math.sin(T*0.6+i)*60)%vw;x=((x%vw)+vw)%vw;ctx.save();ctx.translate(x,y);ctx.rotate(T*1.2+i);ctx.fillStyle=i%2?"rgba(216,138,58,0.9)":"rgba(176,88,40,0.9)";ctx.fillRect(-4,-2,9,4);ctx.restore();}
+    else if(type==="ember"){let y=vh-((dh(i,4,2)*vh+T*120)%vh),x=(dh(i,3,1)*vw+Math.sin(T*1.2+i)*30)%vw;x=((x%vw)+vw)%vw;ctx.fillStyle="rgba(255,"+((120+dh(i,6,1)*120)|0)+",40,0.9)";ctx.beginPath();ctx.arc(x,y,dh(i,5,3)*2+1,0,6.2832);ctx.fill();}
+    else if(type==="pollen"){let y=vh-((dh(i,4,2)*vh+T*30)%vh),x=(dh(i,3,1)*vw+Math.sin(T*0.5+i)*40)%vw;x=((x%vw)+vw)%vw;ctx.fillStyle="rgba(232,255,150,0.7)";ctx.beginPath();ctx.arc(x,y,dh(i,5,3)*2+1,0,6.2832);ctx.fill();}
+    else if(type==="firefly"){const bl=0.5+0.5*Math.sin(T*3+i*2);let y=vh*0.25+vh*0.65*dh(i,4,2)+Math.sin(T*0.6+i)*22,x=(dh(i,3,1)*vw+Math.sin(T*0.4+i)*40)%vw;x=((x%vw)+vw)%vw;ctx.globalAlpha=a*bl;ctx.fillStyle="rgba(200,255,120,0.95)";ctx.beginPath();ctx.arc(x,y,2.6,0,6.2832);ctx.fill();ctx.globalAlpha=a;}
+    else if(type==="bubble"){let y=vh-((dh(i,4,2)*vh+T*60)%vh),x=(dh(i,3,1)*vw+Math.sin(T+i)*16)%vw;x=((x%vw)+vw)%vw;ctx.strokeStyle="rgba(220,245,255,0.6)";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,dh(i,5,3)*7+3,0,6.2832);ctx.stroke();}
+    else if(type==="sparkle"){const tw=0.4+0.6*Math.sin(T*2+i*3);ctx.globalAlpha=a*tw;ctx.fillStyle="#fff";ctx.fillRect(dh(i,3,1)*vw,dh(i,4,2)*vh,2,2);ctx.globalAlpha=a;}
+    else if(type==="dust"){let x=(dh(i,3,1)*vw-T*40)%vw;x=((x%vw)+vw)%vw;const y=dh(i,4,2)*vh+Math.sin(T*0.5+i)*8;ctx.fillStyle="rgba(232,202,150,0.4)";ctx.beginPath();ctx.arc(x,y,dh(i,5,3)*2+1,0,6.2832);ctx.fill();}
   }
-  ctx.restore();
-}
-function _water(ctx,vw,vh,horizon,col,T,a){
-  ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;ctx.fillRect(0,horizon,vw,vh-horizon);
-  ctx.strokeStyle="rgba(255,255,255,0.22)";ctx.lineWidth=2;
-  for(let i=0;i<7;i++){const y=horizon+(i+1)/8*(vh-horizon);ctx.beginPath();for(let x=0;x<=vw;x+=26)ctx.lineTo(x,y+Math.sin(x/46+T*1.2+i)*2.2);ctx.stroke();}
-  ctx.restore();
-}
-function _pine(ctx,x,base,h){ctx.beginPath();ctx.moveTo(x,base-h);ctx.lineTo(x-h*0.28,base);ctx.lineTo(x+h*0.28,base);ctx.closePath();ctx.fill();ctx.beginPath();ctx.moveTo(x,base-h*1.18);ctx.lineTo(x-h*0.2,base-h*0.52);ctx.lineTo(x+h*0.2,base-h*0.52);ctx.closePath();ctx.fill();}
-function _palm(ctx,x,base,h){ctx.save();ctx.strokeStyle=ctx.fillStyle;ctx.lineWidth=h*0.07;ctx.lineCap="round";ctx.beginPath();ctx.moveTo(x,base);ctx.quadraticCurveTo(x+h*0.12,base-h*0.5,x+h*0.05,base-h);ctx.stroke();ctx.lineWidth=h*0.05;for(let k=0;k<5;k++){const an=-1.1+k*0.55;ctx.beginPath();ctx.moveTo(x+h*0.05,base-h);ctx.quadraticCurveTo(x+h*0.05+Math.cos(an)*h*0.4,base-h-Math.sin(an)*h*0.32,x+h*0.05+Math.cos(an)*h*0.66,base-h*0.82);ctx.stroke();}ctx.restore();}
-function _bush(ctx,x,base,h){ctx.beginPath();ctx.ellipse(x,base-h*0.42,h*0.5,h*0.5,0,0,6.2832);ctx.fill();ctx.beginPath();ctx.ellipse(x-h*0.36,base-h*0.2,h*0.34,h*0.34,0,0,6.2832);ctx.fill();ctx.beginPath();ctx.ellipse(x+h*0.36,base-h*0.2,h*0.34,h*0.34,0,0,6.2832);ctx.fill();}
-function _trees(ctx,vw,vh,camX,base,type,col,a){
-  ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;
-  const step=120, off=(-camX*0.4)%step;
-  for(let x=-step;x<vw+step;x+=step){
-    const k=Math.round(x/step), bx=x+off+(dh(k,11,1)-0.5)*40, h=56+dh(k,12,2)*54;
-    ctx.fillStyle=col;
-    if(type==="pine")_pine(ctx,bx,base,h);
-    else if(type==="palm")_palm(ctx,bx,base,h);
-    else _bush(ctx,bx,base,h);
-  }
-  ctx.restore();
-}
-function _precip(ctx,vw,vh,type,T,a){
-  if(!type)return;const n=(a*120)|0;ctx.save();
-  for(let i=0;i<n;i++){
-    const spd=type==="rain"?780:type==="snow"?70:90;
-    let y=(dh(i,4,2)*vh+T*spd)%vh;
-    let x=(dh(i,3,1)*vw+(type==="rain"?40:Math.sin(T*0.8+i)*38))%vw; x=((x%vw)+vw)%vw;
-    if(type==="rain"){ctx.strokeStyle="rgba(190,214,255,0.50)";ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x-5,y+15);ctx.stroke();}
-    else if(type==="snow"){ctx.fillStyle="rgba(255,255,255,0.92)";ctx.beginPath();ctx.arc(x,y,dh(i,5,3)*2+1,0,6.2832);ctx.fill();}
-    else if(type==="ember"){ctx.fillStyle="rgba(255,"+((120+dh(i,6,1)*120)|0)+",40,0.9)";ctx.beginPath();ctx.arc(x,vh-y,dh(i,5,3)*2+1,0,6.2832);ctx.fill();}
-    else{ctx.save();ctx.translate(x,y);ctx.rotate(T*1.5+i);ctx.fillStyle=type==="petal"?"rgba(255,184,212,0.92)":"rgba(216,138,58,0.92)";ctx.fillRect(-3,-2,7,4);ctx.restore();}
-  }
-  ctx.restore();
-}
-function _aurora(ctx,vw,vh,T,a,cols){
-  if(a<=0)return;ctx.save();ctx.globalAlpha=a*0.45;ctx.globalCompositeOperation="lighter";
-  for(let b=0;b<cols.length;b++){
-    ctx.fillStyle=cols[b];ctx.beginPath();ctx.moveTo(0,vh*0.12);
-    for(let x=0;x<=vw;x+=22)ctx.lineTo(x,vh*(0.12+0.07*b)+Math.sin(x/vw*7+T*0.5+b)*26);
-    for(let x=vw;x>=0;x-=22)ctx.lineTo(x,vh*(0.26+0.07*b)+Math.sin(x/vw*7+T*0.5+b)*26);
-    ctx.closePath();ctx.fill();
-  }
-  ctx.restore();
-}
-function _nebula(ctx,vw,vh,a,cols){
-  if(a<=0)return;ctx.save();ctx.globalAlpha=a*0.55;ctx.globalCompositeOperation="lighter";
-  for(let i=0;i<cols.length;i++){
-    const x=vw*(0.18+0.64*dh(i,9,1)), y=vh*(0.15+0.5*dh(i,9,2)), r=vw*(0.28+dh(i,9,3)*0.18);
-    const g=ctx.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,cols[i]);g.addColorStop(1,"rgba(0,0,0,0)");
-    ctx.fillStyle=g;ctx.fillRect(0,0,vw,vh);
-  }
-  ctx.restore();
-}
-function _rainbow(ctx,vw,vh,a){ctx.save();ctx.globalAlpha=a*0.35;const C=["#ff5b5b","#ffae4d","#ffe84d","#5be08a","#5bc8ff","#9b6bff"];ctx.lineWidth=13;C.forEach((c,i)=>{ctx.strokeStyle=c;ctx.beginPath();ctx.arc(vw*0.5,vh*1.15,vh*0.55+i*13,Math.PI,2*Math.PI);ctx.stroke();});ctx.restore();}
-function _planet(ctx,x,y,R,col,ring,a){ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,R,0,6.2832);ctx.fill();ctx.translate(x,y);ctx.rotate(-0.42);ctx.scale(1,0.30);ctx.strokeStyle=ring;ctx.lineWidth=R*0.16;ctx.beginPath();ctx.arc(0,0,R*1.8,0,6.2832);ctx.stroke();ctx.restore();}
-function _bubbles(ctx,vw,vh,T,a){ctx.save();ctx.globalAlpha=a;ctx.strokeStyle="rgba(220,245,255,0.6)";ctx.lineWidth=1.5;for(let i=0;i<26;i++){let y=vh-((dh(i,4,2)*vh+T*60)%vh);let x=(dh(i,3,1)*vw+Math.sin(T+i)*16)%vw;x=((x%vw)+vw)%vw;const r=dh(i,5,3)*8+3;ctx.beginPath();ctx.arc(x,y,r,0,6.2832);ctx.stroke();}ctx.restore();}
-function _godray(ctx,vw,vh,T,a){ctx.save();ctx.globalAlpha=a*0.16;ctx.globalCompositeOperation="lighter";ctx.fillStyle="#bfeaff";for(let i=0;i<6;i++){const x=vw*(i/6)+Math.sin(T*0.3+i)*20;ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+40,0);ctx.lineTo(x+120,vh);ctx.lineTo(x+60,vh);ctx.closePath();ctx.fill();}ctx.restore();}
+  ctx.restore();}
+function _shimmer(ctx,vw,vh,T,a){if(a<=0)return;ctx.save();ctx.globalAlpha=a*0.12;ctx.fillStyle="#ffffff";for(let i=0;i<7;i++){const y=vh*(0.34+i*0.09)+Math.sin(T*2+i)*6;ctx.fillRect(0,y,vw,2);}ctx.restore();}
+function _lightning(ctx,vw,vh,T,a){if((Math.floor(T)%3===0)&&Math.sin(T*7)>0.9){ctx.save();ctx.globalAlpha=a*0.5;ctx.fillStyle="#fff";ctx.fillRect(0,0,vw,vh);ctx.restore();}}
 function _comet(ctx,vw,vh,T,a){ctx.save();ctx.globalAlpha=a;const p=(T*0.2)%1,x=vw*(1-p)*1.05,y=vh*0.16+p*vh*0.3;const g=ctx.createLinearGradient(x,y,x+90,y-40);g.addColorStop(0,"rgba(255,255,255,0.9)");g.addColorStop(1,"rgba(255,255,255,0)");ctx.strokeStyle=g;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+90,y-40);ctx.stroke();ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(x,y,3,0,6.2832);ctx.fill();ctx.restore();}
-function _lightning(ctx,vw,vh,T,a){if((Math.floor(T)%3===0)&&Math.sin(T*7)>0.93){ctx.save();ctx.globalAlpha=a*0.45;ctx.fillStyle="#fff";ctx.fillRect(0,0,vw,vh);ctx.restore();}}
+function _planet(ctx,x,y,R,col,ring,a){ctx.save();ctx.globalAlpha=a;ctx.fillStyle=col;ctx.beginPath();ctx.arc(x,y,R,0,6.2832);ctx.fill();ctx.translate(x,y);ctx.rotate(-0.42);ctx.scale(1,0.30);ctx.strokeStyle=ring;ctx.lineWidth=R*0.16;ctx.beginPath();ctx.arc(0,0,R*1.8,0,6.2832);ctx.stroke();ctx.restore();}
+function _rainbow(ctx,vw,vh,a){ctx.save();ctx.globalAlpha=a*0.3;const C=["#ff5b5b","#ffae4d","#ffe84d","#5be08a","#5bc8ff","#9b6bff"];ctx.lineWidth=13;C.forEach((c,i)=>{ctx.strokeStyle=c;ctx.beginPath();ctx.arc(vw*0.5,vh*1.15,vh*0.55+i*13,Math.PI,2*Math.PI);ctx.stroke();});ctx.restore();}
 
-function _scene(ctx,vw,vh,camX,camY,Z,a,T,horizon){
+function _scene(ctx,vw,vh,camX,camY,Z,a,T){
   if(a<=0)return;
   if(Z.nebula)_nebula(ctx,vw,vh,a*Z.nebula[0],Z.nebula[1]);
   if(Z.stars)_stars(ctx,vw,vh,camX,camY,a,Z.stars,T);
   if(Z.aurora)_aurora(ctx,vw,vh,T,a*Z.aurora[0],Z.aurora[1]);
-  if(Z.godray)_godray(ctx,vw,vh,T,a);
-  if(Z.comet)_comet(ctx,vw,vh,T,a);
+  if(Z.glow)_glow(ctx,vw*Z.glow[0],vh*Z.glow[1],Math.max(vw,vh)*Z.glow[2],Z.glow[3],a);
+  if(Z.shafts)_shafts(ctx,vw,vh,T,a*Z.shafts[0],Z.shafts[1]);
   if(Z.planet)_planet(ctx,vw*Z.planet[0],vh*Z.planet[1],Z.planet[2],Z.planet[3],Z.planet[4],a);
-  if(Z.moon)_moon(ctx,vw*Z.moon[0],vh*Z.moon[1],Z.moon[2],Z.moon[3],a);
-  if(Z.sun)_sun(ctx,vw*Z.sun[0],vh*Z.sun[1],Z.sun[2],Z.sun[3],Z.sun[4],a);
-  if(Z.rainbow)_rainbow(ctx,vw,vh,a);
-  if(Z.mtn2)_mountains(ctx,vw,vh,camX,horizon,Z.mtn2[0],Z.mtn2[1],Z.mtn2[2],17,a);
-  if(Z.mtn)_mountains(ctx,vw,vh,camX,horizon+8,Z.mtn[0],Z.mtn[1],Z.mtn[2],23,a);
-  if(Z.water)_water(ctx,vw,vh,horizon,Z.water[0],T,a);
-  if(Z.hills)_hills(ctx,vw,vh,camX,horizon+10,Z.hills[0],Z.hills[1],0.25,a);
+  if(Z.bank)_cloudBank(ctx,vw,vh,camX,T,a*Z.bank[0],Z.bank[1]);
   if(Z.clouds)_clouds(ctx,vw,vh,camX,a*Z.clouds[0],Z.clouds[1],Z.clouds[0],T);
-  if(Z.trees)_trees(ctx,vw,vh,camX,horizon+vh*0.045,Z.trees[0],Z.trees[1],a);
-  if(Z.bubbles)_bubbles(ctx,vw,vh,T,a);
+  if(Z.fog)_fog(ctx,vw,vh,T,a*Z.fog[0],Z.fog[1]);
+  if(Z.shimmer)_shimmer(ctx,vw,vh,T,a*Z.shimmer);
+  if(Z.wind)_wind(ctx,vw,vh,T,a*Z.wind);
+  if(Z.leaves)_leaves(ctx,vw,vh,T,Z.leaves,a);
+  if(Z.comet)_comet(ctx,vw,vh,T,a);
+  if(Z.rainbow)_rainbow(ctx,vw,vh,a);
+  if(Z.precip)_weather(ctx,vw,vh,Z.precip,T,a*(Z.pN||0.6));
   if(Z.lightning)_lightning(ctx,vw,vh,T,a);
-  if(Z.precip)_precip(ctx,vw,vh,Z.precip,T,a);
 }
-
 function drawBackground(ctx, camX, camY, vw, vh, ox, oy, scale){
   const T=performance.now()/1000, s=_skyScore;
   let idx=clamp(Math.floor(s/1000),0,ZONES.length-1);
   const cur=ZONES[idx], nxt=ZONES[Math.min(idx+1,ZONES.length-1)];
   const t=clamp((s-idx*1000)/1000,0,1);
-  // base sky gradient (screen space — fills the whole canvas)
-  const g=ctx.createLinearGradient(0,vh,0,0);
-  g.addColorStop(0,_lerpC(cur.a,nxt.a,t));
-  g.addColorStop(1,_lerpC(cur.b,nxt.b,t));
+  // radial depth gradient — bright core, dark edges → immersive full-screen look
+  const cx=vw*0.5, cy=vh*0.42, R=Math.hypot(vw,vh)*0.62;
+  const g=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+  g.addColorStop(0,_lerpC(cur.c1,nxt.c1,t));
+  g.addColorStop(1,_lerpC(cur.c2,nxt.c2,t));
   ctx.fillStyle=g;ctx.fillRect(0,0,vw,vh);
-  const horizon=vh*0.80;
-  // scenery, cross-fading over the last sliver of each zone
   const aCur=t<0.86?1:1-(t-0.86)/0.14, aNext=t<0.86?0:(t-0.86)/0.14;
-  _scene(ctx,vw,vh,camX,camY,cur,aCur,T,horizon);
-  if(aNext>0.001)_scene(ctx,vw,vh,camX,camY,nxt,aNext,T,horizon);
-  // soft vignette
-  const vg=ctx.createRadialGradient(vw/2,vh*0.5,vh*0.2,vw/2,vh*0.5,vh*0.86);
-  vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,"rgba(0,0,0,0.20)");
+  _scene(ctx,vw,vh,camX,camY,cur,aCur,T);
+  if(aNext>0.001)_scene(ctx,vw,vh,camX,camY,nxt,aNext,T);
+  // edge vignette for depth
+  const vstr=Math.max(cur.vig||0.24, nxt.vig||0.24);
+  const vg=ctx.createRadialGradient(cx,cy,vh*0.16,cx,cy,R*0.95);
+  vg.addColorStop(0,"rgba(0,0,0,0)");vg.addColorStop(1,"rgba(0,0,0,"+vstr.toFixed(2)+")");
   ctx.fillStyle=vg;ctx.fillRect(0,0,vw,vh);
 }
+
 
 
 // ── FLASH ────────────────────────────────────────────────────────────────────
