@@ -459,7 +459,7 @@ class Ball{
     this.angle=expDecay(this.angle,tgt,0.001,dt*11);
     this.trail.unshift({x:this.x,y:this.y,a:1});if(this.trail.length>14)this.trail.pop();
     for(const t of this.trail)t.a-=dt*9;}
-  draw(ctx,camX,camY){
+  draw(ctx,camX,camY,burn=0){
     const sx=this.x-camX,sy=this.y-camY,r=BALL_R;
     const tr=this.trail.filter(t=>t.a>0);
     for(let i=0;i<tr.length;i++){const t=tr[i],ff=1-i/tr.length;
@@ -479,7 +479,28 @@ class Ball{
     ctx.beginPath();ctx.arc(r*0.28,0,r*0.88,Math.PI-0.62,Math.PI+0.62);ctx.stroke();ctx.restore();
     const sh=ctx.createRadialGradient(-r*0.36,-r*0.38,0,-r*0.26,-r*0.28,r*0.55);
     sh.addColorStop(0,'rgba(255,255,255,0.52)');sh.addColorStop(0.45,'rgba(255,255,255,0.10)');sh.addColorStop(1,'rgba(255,255,255,0)');
-    ctx.fillStyle=sh;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.restore();}}
+    ctx.fillStyle=sh;ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();
+    if(burn>=3){
+      ctx.save();ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.clip();
+      const inten=clamp((burn-2)/3,0,1),T=performance.now()/1000,fl=0.55+0.45*Math.sin(T*8);
+      // char the ball brown→black
+      const cg=ctx.createRadialGradient(-r*0.2,-r*0.2,r*0.1,0,0,r);
+      cg.addColorStop(0,'rgba(64,32,14,'+(0.5+0.35*inten).toFixed(2)+')');
+      cg.addColorStop(0.7,'rgba(30,15,7,'+(0.62+0.3*inten).toFixed(2)+')');
+      cg.addColorStop(1,'rgba(10,5,3,0.85)');
+      ctx.fillStyle=cg;ctx.fillRect(-r,-r,r*2,r*2);
+      // glowing lava cracks
+      const cracks=[[[-0.1,-1],[0.06,-0.32],[-0.16,0.1],[0.1,0.6],[-0.04,1]],[[-1,0.04],[-0.4,-0.12],[0,0.04],[0.5,-0.06],[1,0.1]],[[-0.72,-0.7],[-0.2,-0.22],[0.12,0.2],[0.5,0.62]],[[0.7,-0.62],[0.3,-0.16],[-0.1,0.2],[-0.5,0.7]]];
+      ctx.lineCap='round';
+      for(const pth of cracks){
+        ctx.strokeStyle='rgba(255,'+((90+70*fl)|0)+',10,'+(0.5*fl).toFixed(2)+')';ctx.lineWidth=4.6;
+        ctx.beginPath();pth.forEach((p,i)=>{const X=p[0]*r,Y=p[1]*r;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.stroke();
+        ctx.strokeStyle='rgba(255,'+((205+45*fl)|0)+',120,'+(0.9*fl).toFixed(2)+')';ctx.lineWidth=1.8;
+        ctx.beginPath();pth.forEach((p,i)=>{const X=p[0]*r,Y=p[1]*r;i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.stroke();
+      }
+      ctx.restore();
+    }
+    ctx.restore();}}
 
 // ── SPAWNER ──────────────────────────────────────────────────────────────────
 class Spawner{
@@ -958,7 +979,8 @@ class Game{
       ctx.save();ctx.globalCompositeOperation='lighter';ctx.fillStyle=gg;
       ctx.beginPath();ctx.arc(bx,by,R,0,6.2832);ctx.fill();ctx.restore();}
     // Ball (with trail) drawn next
-    this._pts.draw(ctx,camX,camY);this._ball.draw(ctx,camX,camY);
+    this._pts.draw(ctx,camX,camY);
+    this._ball.draw(ctx,camX,camY,(this._state===S.PLAYING&&!this._boosting)?this._streak:0);
     this._drawBallFire(ctx,camX,camY);
     // Front arcs drawn last – overlap the ball → 3D pass-through illusion
     for(const h of this._spawner.hoops)h.drawFront(ctx,camX,camY);
